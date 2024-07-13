@@ -1,0 +1,155 @@
+<?php
+
+class Model {
+
+    private $host = HOST;
+    private $user = USER;
+    private $database = DATABASE;
+    private $password = PASSWORD;
+
+    public $con;
+
+    public $obj;
+
+    public function __construct () {
+
+        $host = $this->host;
+        $user = $this->user;
+        $db = $this->database;
+        $pswd = $this->password; 
+        
+        try{
+            $this->con = new PDO('mysql:host='.$host.';dbname='.$db, $user, $pswd);
+        } catch (PDOException $e) {
+            showDBConnectionError($e);
+        }
+    }
+
+    // for making database queries
+    public function query ($qry, $params = [], ) {
+        if(empty($params)) {
+            $result = $this->con->prepare($qry);
+            if ($result->execute()) {
+                return $result->fetchAll();
+            }
+            return array();  
+        } else {
+            $result = $this->con->prepare($qry);
+            if($result->execute($params)) { 
+                return $result->fetchAll();
+            }
+            return array();
+        }
+    }
+
+    public function fetch_assoc ($qry, $params = [], ) {
+        if(empty($params)) {
+            $result = $this->con->prepare($qry);
+            if ($result->execute()) {
+                return $result->fetchAll(PDO::FETCH_ASSOC);
+            }
+            return array();  
+        } else {
+            $result = $this->con->prepare($qry);
+            if($result->execute($params)) { 
+                return $result->fetchAll(PDO::FETCH_ASSOC);
+            }
+            return array();
+        }
+    }
+
+    // function to search one field with a condition
+    public function fetch (string $field) {
+        $this->obj = "SELECT `$field` FROM `$this->table` WHERE ";
+
+        // return $this so, this can be chained with ->where()
+        return $this;
+    }
+
+    public function fetch_where($where_condition, $params = [], $type = PDO::FETCH_BOTH) {
+        $qry = "SELECT * FROM `$this->table` WHERE " . $where_condition;
+
+        $prepared = $this->con->prepare($qry);
+        if ($prepared->execute($params)) {
+            return $prepared->fetchAll($type);
+        } else return false;
+    }
+
+    public function delete_where($where_condition, $params = []) {
+        $qry = "DELETE FROM `$this->table` WHERE " . $where_condition;
+
+        $prepared = $this->con->prepare($qry);
+        if ($prepared->execute($params)) {
+            return true;
+        } else return false;
+    }
+
+    // this function can only be chained with fetch()
+    public function where (string $condition) {
+        $this->obj .= "$condition";
+
+        $prepared = $this->con->prepare($this->obj);
+        return $prepared->execute();
+    }
+
+
+    // for fetching all records
+    public function fetchall () {
+        return $this->con->query("SELECT * FROM `$this->table` WHERE 1")->fetchAll();
+    }
+
+    // create a function to fetch selective values
+
+
+    // function to insert into database
+    public function insert ($inserts) {
+        $columns = [];
+        $values = [];
+
+        foreach ($inserts as $column => $value) {
+            $columns[] = $column;
+            $values[] = $value;
+        }
+
+        $query = "insert into $this->table (";
+
+        foreach($columns as $key => $column) {
+
+            if ($key == 0) {
+                $query .= "$column";
+            }
+            else {
+                $query .= ",$column";
+            }
+        }
+
+        $query .= ") values (";
+
+        foreach ($values as $key => $value) {
+            if ($key == 0) {
+                $query .= "?";
+            }
+            else {
+                $query .= ",?";
+            }
+        }
+
+        $query .= ")";
+
+        $prepared = $this->con->prepare($query);
+        return $prepared->execute($values);
+    }
+
+    // get id of the latest inserted record
+    public function get_lateset_id () {
+        return $this->con->query("SELECT `id` FROM `$this->table` ORDER BY `id` DESC LIMIT 1")[0]['id'];
+    }
+
+    // function to update record 
+    public function update_where ($where_condition = ' 1 ' , $setValues = []) {
+        
+        
+    }
+
+    
+}
